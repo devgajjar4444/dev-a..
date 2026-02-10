@@ -5,10 +5,10 @@ import { Home } from '@/components/home'
 import { MatrixForAdi } from '@/components/games/matrix-for-adi'
 import { LoveLock } from '@/components/games/love-lock'
 import { CupidShot } from '@/components/games/cupid-shot'
-import { CatchAdiHeart } from '@/components/games/catch-adi-heart'
+import { QuickFingers } from '@/components/games/quick-fingers'
 import { DoYouLoveDev } from '@/components/games/do-you-love-dev'
 
-type GameType = 'home' | 'matrix' | 'love-lock' | 'cupid-shot' | 'catch-heart' | 'love-calculator'
+type GameType = 'home' | 'matrix' | 'love-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator'
 
 export default function Page() {
   const [currentGame, setCurrentGame] = useState<GameType>('home')
@@ -21,8 +21,8 @@ export default function Page() {
         return <LoveLock onBack={() => setCurrentGame('home')} />
       case 'cupid-shot':
         return <CupidShot onBack={() => setCurrentGame('home')} />
-      case 'catch-heart':
-        return <CatchAdiHeart onBack={() => setCurrentGame('home')} />
+      case 'quick-fingers':
+        return <QuickFingers onBack={() => setCurrentGame('home')} />
       case 'love-calculator':
         return <DoYouLoveDev onBack={() => setCurrentGame('home')} />
       default:
