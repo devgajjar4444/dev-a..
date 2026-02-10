@@ -31,9 +31,9 @@ export function Home({ onSelectGame }: HomeProps) {
     },
     {
       id: 'quick-fingers' as GameType,
-      title: 'Quick Fingers ⚡',
-      emoji: '⚡',
-      description: 'Tap the tiles fast',
+      title: 'Love Roulette 🎡',
+      emoji: '🎡',
+      description: 'Guess love trivia',
     },
     {
       id: 'love-calculator' as GameType,
