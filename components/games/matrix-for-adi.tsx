@@ -18,6 +18,7 @@ export function MatrixForAdi({ onBack }: MatrixForAdiProps) {
   const [isXNext, setIsXNext] = useState(false) // O (Adi) goes first
   const [result, setResult] = useState<GameResult>(null)
   const [showAnimation, setShowAnimation] = useState(false)
+  const [gameStarted, setGameStarted] = useState(false)
 
   const calculateWinner = (squares: Player[]) => {
     const lines = [
@@ -39,20 +40,27 @@ export function MatrixForAdi({ onBack }: MatrixForAdiProps) {
     return null
   }
 
+  // Play game start sound when game begins
+  useEffect(() => {
+    if (gameStarted) {
+      playSound('start')
+    }
+  }, [gameStarted])
+
   useEffect(() => {
     const winner = calculateWinner(board)
     const isBoardFull = board.every((square) => square !== null)
 
     if (winner === 'O') {
-      playSound('win')
+      playSound('end')
       setResult('adi-wins')
       setShowAnimation(true)
     } else if (winner === 'X') {
-      playSound('win')
+      playSound('end')
       setResult('dev-wins')
       setShowAnimation(true)
     } else if (isBoardFull) {
-      playSound('pop')
+      playSound('end')
       setResult('draw')
       setShowAnimation(true)
     }
@@ -73,18 +81,19 @@ export function MatrixForAdi({ onBack }: MatrixForAdiProps) {
     setIsXNext(false)
     setResult(null)
     setShowAnimation(false)
+    setGameStarted(true)
   }
 
   const getResultMessage = () => {
     switch (result) {
       case 'adi-wins':
-        return '💙 ADI WINS! Adi got three in a row 👑💕'
+        return 'Hurray 🎉 Adi wins 💖👑'
       case 'dev-wins':
-        return '💖 DEV WINS! Dev caught Adi this time 🔥'
+        return 'Adi still wins~ Dev 😌❤️'
       case 'draw':
-        return '💞 DRAW! You both are perfectly matched 🤓'
+        return 'Hmm… looks like you both are smart 🤓💘'
       default:
-        return `${isXNext ? '💖 Dev' : '💙 Adi'}'s turn (${isXNext ? 'X' : 'O'})`
+        return `${isXNext ? '💖 Dev' : '💙 Adi'}'s turn`
     }
   }
 
@@ -156,13 +165,13 @@ export function MatrixForAdi({ onBack }: MatrixForAdiProps) {
               disabled={!!result}
               className={`aspect-square rounded-xl font-bold text-3xl transition-all duration-200 ${
                 value === 'O'
-                  ? 'bg-primary text-white'
+                  ? 'bg-blue-500 text-white'
                   : value === 'X'
-                    ? 'bg-secondary text-white'
+                    ? 'bg-rose-500 text-white'
                     : 'bg-gray-100 hover:bg-gray-200'
               } ${!result && !value ? 'cursor-pointer' : 'cursor-default'}`}
             >
-              {value === 'O' ? '❤️' : value === 'X' ? '💙' : ''}
+              {value === 'O' ? '💙' : value === 'X' ? '💖' : ''}
             </button>
           ))}
         </div>
@@ -170,15 +179,20 @@ export function MatrixForAdi({ onBack }: MatrixForAdiProps) {
 
       {/* Buttons */}
       <div className="flex gap-4">
+        {!gameStarted && !result && (
+          <Button onClick={() => setGameStarted(true)} className="rounded-full px-8 bg-blue-600 text-white hover:bg-blue-700">
+            Start Game
+          </Button>
+        )}
         {result && (
-          <Button onClick={resetGame} className="rounded-full px-8 bg-primary text-white hover:bg-primary/90">
+          <Button onClick={resetGame} className="rounded-full px-8 bg-blue-600 text-white hover:bg-blue-700">
             Play Again
           </Button>
         )}
         <Button
           onClick={onBack}
           variant="outline"
-          className="rounded-full px-8 border-primary text-primary hover:bg-primary/10 bg-transparent"
+          className="rounded-full px-8 border-blue-600 text-blue-600 hover:bg-blue-50 bg-transparent"
         >
           Back to Home
         </Button>

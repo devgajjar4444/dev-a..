@@ -6,31 +6,39 @@ import { ArrowLeft } from 'lucide-react'
 import { Confetti } from '@/components/animations/confetti'
 import { playSound } from '@/lib/sound'
 
-interface CupidShotProps {
+interface QuickFingersProps {
   onBack: () => void
 }
 
-interface FloatingHeart {
+type GameResult = 'adi-wins' | 'dev-wins' | 'tie' | null
+type GamePhase = 'ready' | 'adi-turn' | 'transition' | 'dev-turn' | 'finished'
+
+interface Tile {
   id: number
-  x: number
-  y: number
-  isGolden: boolean
+  isLit: boolean
 }
 
-type GameResult = 'adi-wins' | 'dev-wins' | 'tie' | null
-
-export function CupidShot({ onBack }: CupidShotProps) {
-  const [gameStarted, setGameStarted] = useState(false)
+export function QuickFingers({ onBack }: QuickFingersProps) {
+  const [gamePhase, setGamePhase] = useState<GamePhase>('ready')
   const [timeLeft, setTimeLeft] = useState(10)
   const [adiScore, setAdiScore] = useState(0)
   const [devScore, setDevScore] = useState(0)
-  const [hearts, setHearts] = useState<FloatingHeart[]>([])
+  const [tiles, setTiles] = useState<Tile[]>([])
   const [result, setResult] = useState<GameResult>(null)
   const [showAnimation, setShowAnimation] = useState(false)
   const [currentPlayer, setCurrentPlayer] = useState<'adi' | 'dev'>('adi')
-  const [gamePhase, setGamePhase] = useState<'ready' | 'adi-turn' | 'transition' | 'dev-turn' | 'finished'>('ready')
   const [countdownValue, setCountdownValue] = useState(3)
-  const heartIdRef = useRef(0)
+  const tileIdRef = useRef(0)
+  const lightTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Initialize tiles
+  useEffect(() => {
+    const newTiles: Tile[] = Array.from({ length: 9 }, (_, i) => ({
+      id: i,
+      isLit: false,
+    }))
+    setTiles(newTiles)
+  }, [])
 
   // Game timer for active turns
   useEffect(() => {
@@ -52,9 +60,6 @@ export function CupidShot({ onBack }: CupidShotProps) {
   // Handle turn ending
   useEffect(() => {
     if ((gamePhase === 'adi-turn' || gamePhase === 'dev-turn') && timeLeft === 0) {
-      setGameStarted(false)
-      setHearts([])
-
       if (currentPlayer === 'adi') {
         setGamePhase('transition')
         setCountdownValue(3)
@@ -82,41 +87,63 @@ export function CupidShot({ onBack }: CupidShotProps) {
     return () => clearTimeout(timer)
   }, [gamePhase, countdownValue])
 
-  // Generate floating hearts
+  // Randomly light up tiles during turns
   useEffect(() => {
-    if (gamePhase !== 'adi-turn' && gamePhase !== 'dev-turn') return
-
-    const interval = setInterval(() => {
-      const isGolden = Math.random() < 0.15
-      const newHeart: FloatingHeart = {
-        id: heartIdRef.current++,
-        x: Math.random() * 80 + 10,
-        y: -10,
-        isGolden,
-      }
-      setHearts((prev) => [...prev, newHeart])
-
-      // Remove hearts that go off screen
-      setTimeout(() => {
-        setHearts((prev) => prev.filter((h) => h.id !== newHeart.id))
-      }, 4000)
-    }, 400)
-
-    return () => clearInterval(interval)
-  }, [gamePhase])
-
-  const handleHeartClick = (heart: FloatingHeart) => {
-    if (gamePhase !== 'adi-turn' && gamePhase !== 'dev-turn') return
-
-    playSound('click')
-    const points = heart.isGolden ? 5 : 1
-    if (currentPlayer === 'adi') {
-      setAdiScore((prev) => prev + points)
-    } else {
-      setDevScore((prev) => prev + points)
+    if (gamePhase !== 'adi-turn' && gamePhase !== 'dev-turn') {
+      if (lightTimeoutRef.current) clearTimeout(lightTimeoutRef.current)
+      return
     }
 
-    setHearts((prev) => prev.filter((h) => h.id !== heart.id))
+    const scheduleNextLight = () => {
+      lightTimeoutRef.current = setTimeout(() => {
+        const randomTile = Math.floor(Math.random() * 9)
+        setTiles((prev) =>
+          prev.map((tile) =>
+            tile.id === randomTile ? { ...tile, isLit: true } : tile
+          )
+        )
+
+        // Turn off the light after 300ms
+        setTimeout(() => {
+          setTiles((prev) =>
+            prev.map((tile) =>
+              tile.id === randomTile ? { ...tile, isLit: false } : tile
+            )
+          )
+        }, 300)
+
+        scheduleNextLight()
+      }, 600)
+    }
+
+    scheduleNextLight()
+
+    return () => {
+      if (lightTimeoutRef.current) clearTimeout(lightTimeoutRef.current)
+    }
+  }, [gamePhase])
+
+  const handleTileClick = (tileId: number) => {
+    if (gamePhase !== 'adi-turn' && gamePhase !== 'dev-turn') return
+
+    const tile = tiles.find((t) => t.id === tileId)
+    if (!tile || !tile.isLit) return
+
+    playSound('click')
+
+    // Add points for correctly tapped tile
+    if (currentPlayer === 'adi') {
+      setAdiScore((prev) => prev + 1)
+    } else {
+      setDevScore((prev) => prev + 1)
+    }
+
+    // Light up this tile
+    setTiles((prev) =>
+      prev.map((t) =>
+        t.id === tileId ? { ...t, isLit: true } : t
+      )
+    )
   }
 
   const determineWinner = () => {
@@ -127,7 +154,7 @@ export function CupidShot({ onBack }: CupidShotProps) {
     } else {
       setResult('tie')
     }
-    playSound('win')
+    playSound('end')
     setShowAnimation(true)
   }
 
@@ -135,43 +162,33 @@ export function CupidShot({ onBack }: CupidShotProps) {
     setTimeLeft(10)
     setAdiScore(0)
     setDevScore(0)
-    setHearts([])
     setResult(null)
     setShowAnimation(false)
     setCurrentPlayer('adi')
     setGamePhase('adi-turn')
-    heartIdRef.current = 0
     playSound('start')
   }
 
   const getResultMessage = () => {
     if (gamePhase === 'adi-turn') {
-      return "💙 Adi's Turn"
+      return '💙 Adi\'s Turn'
     }
     if (gamePhase === 'dev-turn') {
-      return "💖 Dev's Turn"
+      return '💖 Dev\'s Turn'
     }
     if (gamePhase === 'transition') {
       return `Dev, get ready!\n${countdownValue}`
     }
     switch (result) {
       case 'adi-wins':
-        return "💙 ADI WINS 💥💘\nDev's heart was never safe anyway 😌"
+        return "💙 Adi's reflexes are OP ⚡😎"
       case 'dev-wins':
-        return "💖 DEV WINS 🔥💘\nCupid officially resigns 😎🏹"
+        return '💖 Dev wins — reaction speed unlocked 🔥'
       case 'tie':
-        return '💞 Perfect balance — love refuses to choose'
+        return '🤝 Same speed, same brain 😆'
       default:
         return 'Click "Start Game" to begin!'
     }
-  }
-
-  const getTurnColor = () => {
-    return currentPlayer === 'adi' ? 'from-blue-100 to-blue-50' : 'from-rose-100 to-pink-50'
-  }
-
-  const getTurnBorderColor = () => {
-    return currentPlayer === 'adi' ? 'border-blue-400' : 'border-rose-400'
   }
 
   const playAgain = () => {
@@ -182,9 +199,9 @@ export function CupidShot({ onBack }: CupidShotProps) {
     <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8 overflow-hidden">
       {showAnimation && (
         <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
-          <Confetti count={50} duration={2.5} delay={0} shape="heart" />
-          <div className="text-8xl animate-bounce">💥</div>
-          <div className="text-6xl animate-pulse ml-4">💘</div>
+          <Confetti count={50} duration={2.5} delay={0} shape="sparkle" />
+          <div className="text-8xl animate-bounce">⚡</div>
+          <div className="text-6xl animate-pulse ml-4">✨</div>
         </div>
       )}
 
@@ -197,8 +214,8 @@ export function CupidShot({ onBack }: CupidShotProps) {
           <ArrowLeft className="w-5 h-5" />
           Back to Arcade
         </button>
-        <h2 className="text-3xl font-bold text-center mb-2">Cupid Shot</h2>
-        <p className="text-center text-muted-foreground">Click the hearts! 💘</p>
+        <h2 className="text-3xl font-bold text-center mb-2">Quick Fingers ⚡</h2>
+        <p className="text-center text-muted-foreground">Tap the lit tiles fast!</p>
       </div>
 
       {/* Game Stats */}
@@ -217,27 +234,38 @@ export function CupidShot({ onBack }: CupidShotProps) {
       </div>
 
       {/* Game Area */}
-      <div className={`relative w-full max-w-md h-96 mb-8 rounded-2xl shadow-xl overflow-hidden border-4 transition-all duration-300 bg-gradient-to-b ${getTurnColor()} ${getTurnBorderColor()}`}>
-        {/* Floating Hearts */}
-        {hearts.map((heart) => (
-          <button
-            key={heart.id}
-            onClick={() => handleHeartClick(heart)}
-            className={`absolute cursor-pointer text-4xl transition-all duration-200 hover:scale-125 ${
-              heart.isGolden ? 'animate-pulse' : ''
-            }`}
-            style={{
-              left: `${heart.x}%`,
-              top: (gamePhase === 'adi-turn' || gamePhase === 'dev-turn') ? `${(heart.y + timeLeft * 8) % 110}%` : `${heart.y}%`,
-            }}
-          >
-            {currentPlayer === 'adi' ? '💙' : '💖'}
-          </button>
-        ))}
+      <div className={`relative w-full max-w-md rounded-2xl shadow-xl overflow-hidden border-4 transition-all duration-300 bg-gradient-to-b p-4 ${
+        currentPlayer === 'adi' ? 'from-blue-100 to-blue-50 border-blue-400' : 'from-rose-100 to-pink-50 border-rose-400'
+      } mb-8`}>
+        {/* Tile Grid */}
+        <div className="grid grid-cols-3 gap-3">
+          {tiles.map((tile) => (
+            <button
+              key={tile.id}
+              onClick={() => handleTileClick(tile.id)}
+              disabled={gamePhase !== 'adi-turn' && gamePhase !== 'dev-turn'}
+              className={`aspect-square rounded-lg font-bold text-2xl transition-all duration-100 ${
+                tile.isLit
+                  ? currentPlayer === 'adi'
+                    ? 'bg-blue-400 text-white scale-110 shadow-lg'
+                    : 'bg-rose-400 text-white scale-110 shadow-lg'
+                  : 'bg-gray-200 hover:bg-gray-300'
+              } ${
+                gamePhase === 'adi-turn' || gamePhase === 'dev-turn'
+                  ? 'cursor-pointer'
+                  : 'cursor-default'
+              }`}
+            >
+              {tile.isLit ? '⚡' : ''}
+            </button>
+          ))}
+        </div>
 
         {/* Game Message */}
         <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
-          <p className="text-center text-muted-foreground font-semibold whitespace-pre-line">{getResultMessage()}</p>
+          <p className="text-center text-muted-foreground font-semibold whitespace-pre-line">
+            {getResultMessage()}
+          </p>
         </div>
       </div>
 
