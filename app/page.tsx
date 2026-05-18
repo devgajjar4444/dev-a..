@@ -5,7 +5,7 @@ import { Home } from '@/components/home'
 import { MatrixForAdi } from '@/components/games/matrix-for-adi'
 import { LoveLock } from '@/components/games/love-lock'
 import { CupidShot } from '@/components/games/cupid-shot'
-import { QuickFingers } from '@/components/games/quick-fingers'
+import { LoveRoulette } from '@/components/games/love-roulette'
 import { DoYouLoveDev } from '@/components/games/do-you-love-dev'
 
 type GameType = 'home' | 'matrix' | 'love-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator'
@@ -22,7 +22,7 @@ export default function Page() {
       case 'cupid-shot':
         return <CupidShot onBack={() => setCurrentGame('home')} />
       case 'quick-fingers':
-        return <QuickFingers onBack={() => setCurrentGame('home')} />
+        return <LoveRoulette onBack={() => setCurrentGame('home')} />
       case 'love-calculator':
         return <DoYouLoveDev onBack={() => setCurrentGame('home')} />
       default:
