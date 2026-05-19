@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Heart, Gamepad2 } from 'lucide-react'
 
-type GameType = 'matrix' | 'love-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator'
+type GameType = 'matrix' | 'love-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator' | 'guess-the-date' | 'story-time'
 
 interface HomeProps {
   onSelectGame: (game: GameType) => void
@@ -40,6 +40,18 @@ export function Home({ onSelectGame }: HomeProps) {
       title: 'Do You Love Dev?',
       emoji: '💕',
       description: 'Love calculator',
+    },
+    {
+      id: 'guess-the-date' as GameType,
+      title: 'Guess the Date',
+      emoji: '💌',
+      description: 'Reveal love memories',
+    },
+    {
+      id: 'story-time' as GameType,
+      title: 'Story Time',
+      emoji: '📖',
+      description: 'Romantic bedtime stories',
     },
   ]
 
