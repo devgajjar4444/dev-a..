@@ -8,8 +8,9 @@ import { CupidShot } from '@/components/games/cupid-shot'
 import { QuickFingers } from '@/components/games/quick-fingers'
 import { DoYouLoveDev } from '@/components/games/do-you-love-dev'
 import { GuessTheDate } from '@/components/games/guess-the-date'
+import { StoryTime } from '@/components/games/story-time'
 
-type GameType = 'home' | 'matrix' | 'love-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator' | 'guess-the-date'
+type GameType = 'home' | 'matrix' | 'love-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator' | 'guess-the-date' | 'story-time'
 
 export default function Page() {
   const [currentGame, setCurrentGame] = useState<GameType>('home')
@@ -28,6 +29,8 @@ export default function Page() {
         return <DoYouLoveDev onBack={() => setCurrentGame('home')} />
       case 'guess-the-date':
         return <GuessTheDate onBack={() => setCurrentGame('home')} />
+      case 'story-time':
+        return <StoryTime onBack={() => setCurrentGame('home')} />
       default:
         return <Home onSelectGame={setCurrentGame} />
     }
