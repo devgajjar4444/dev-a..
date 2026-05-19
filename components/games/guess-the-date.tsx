@@ -20,13 +20,13 @@ interface Card {
 export function GuessTheDate({ onBack }: GuessTheDateProps) {
   const memories = [
     { date: '25 April 2025', memory: 'The day everything changed 💖' },
-    { date: '17 July 2025', memory: 'Our first adventure together 🌸' },
-    { date: '31 July 2025', memory: 'Pizza night and star gazing 🍕✨' },
-    { date: '9 Dec 2025', memory: 'First winter together ❄️' },
-    { date: '15 Dec 2025', memory: 'Cozy moments and laughter 😊' },
+    { date: '17 July 2025', memory: 'Guess the date 🌸' },
+    { date: '31 July 2025', memory: 'Guess the date ✨' },
+    { date: '9 Dec 2025', memory: 'First beautiful memory of shivering' },
+    { date: '15 Dec 2025', memory: 'waiting for you 😊' },
     { date: '25 Dec 2025', memory: 'Making new memories ✨' },
     { date: '27 Dec 2025', memory: 'Forever starts here 💕' },
-    { date: '1 Jan 2026', memory: 'New year, same love 🎆' },
+    { date: '1 Jan 2026', memory: 'New year, First love 🎆' },
     { date: '10 Feb 2026', memory: 'Love day, every day 💘' },
   ]
 

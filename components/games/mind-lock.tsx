@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Volume2, VolumeX } from 'lucide-react'
 import { playSound } from '@/lib/sound'
 
 interface GameState {
-  adiSecret: string | null
-  devSecret: string | null
+  adiSecret: string
+  devSecret: string
   adiLowest: number
   adiHighest: number
   devLowest: number
@@ -18,17 +18,21 @@ interface GameState {
   devLastHint: string | null
   adiGuessCount: number
   devGuessCount: number
-  currentTurn: 'setup' | 'adi' | 'dev' | 'countdown'
+  currentTurn: 'countdown' | 'adi' | 'dev'
   countdownValue: number | null
   winner: 'adi' | 'dev' | null
   adiGuessHistory: number[]
   devGuessHistory: number[]
 }
 
+const generateSecret = (): string => {
+  return Math.floor(Math.random() * 100000).toString()
+}
+
 export function MindLock({ onBack }: { onBack: () => void }) {
   const [gameState, setGameState] = useState<GameState>({
-    adiSecret: null,
-    devSecret: null,
+    adiSecret: '',
+    devSecret: '',
     adiLowest: 0,
     adiHighest: 99999,
     devLowest: 0,
@@ -39,62 +43,33 @@ export function MindLock({ onBack }: { onBack: () => void }) {
     devLastHint: null,
     adiGuessCount: 0,
     devGuessCount: 0,
-    currentTurn: 'setup',
+    currentTurn: 'countdown',
     countdownValue: null,
     winner: null,
     adiGuessHistory: [],
     devGuessHistory: [],
   })
 
-  const [adiInput, setAdiInput] = useState('')
-  const [devInput, setDevInput] = useState('')
   const [soundEnabled, setSoundEnabled] = useState(true)
   const adiInputRef = useRef<HTMLInputElement>(null)
   const devInputRef = useRef<HTMLInputElement>(null)
   const shakeRef = useRef<HTMLDivElement>(null)
 
-  const playGameSound = (type: string) => {
-    if (!soundEnabled) return
-    if (type === 'guess') playSound('correct')
-    if (type === 'wrong') playSound('error')
-    if (type === 'victory') playSound('victory')
-  }
-
-  const calculateHint = (guess: number, secret: number): string => {
-    if (guess === secret) return 'CORRECT'
-    return guess < secret ? 'Higher ⬆️' : 'Lower ⬇️'
-  }
-
-  const checkVictory = (guess: number, secret: string): boolean => {
-    return guess === parseInt(secret)
-  }
-
-  const handleAdiSecretSubmit = () => {
-    if (adiInput.length === 0 || adiInput.length > 5) return
+  useEffect(() => {
+    // Auto-generate secrets and start countdown on mount
+    const newAdiSecret = generateSecret()
+    const newDevSecret = generateSecret()
+    
     setGameState((prev) => ({
       ...prev,
-      adiSecret: adiInput,
-    }))
-    setAdiInput('')
-  }
-
-  const handleDevSecretSubmit = () => {
-    if (devInput.length === 0 || devInput.length > 5) return
-    setGameState((prev) => ({
-      ...prev,
-      devSecret: devInput,
-    }))
-    setDevInput('')
-  }
-
-  const startCountdown = () => {
-    setGameState((prev) => ({
-      ...prev,
+      adiSecret: newAdiSecret,
+      devSecret: newDevSecret,
       currentTurn: 'countdown',
       countdownValue: 3,
     }))
-    playGameSound('guess')
-
+    
+    playSound('start')
+    
     let countdown = 3
     const countdownInterval = setInterval(() => {
       countdown--
@@ -112,7 +87,27 @@ export function MindLock({ onBack }: { onBack: () => void }) {
         countdownValue: countdown,
       }))
     }, 1000)
+    
+    return () => clearInterval(countdownInterval)
+  }, [])
+
+  const playGameSound = (type: string) => {
+    if (!soundEnabled) return
+    if (type === 'guess') playSound('correct')
+    if (type === 'wrong') playSound('error')
+    if (type === 'victory') playSound('victory')
   }
+
+  const calculateHint = (guess: number, secret: number): string => {
+    if (guess === secret) return 'CORRECT'
+    return guess < secret ? 'Higher ⬆️' : 'Lower ⬇️'
+  }
+
+  const checkVictory = (guess: number, secret: string): boolean => {
+    return guess === parseInt(secret)
+  }
+
+
 
   const handleAdiGuess = (guess: number) => {
     if (!gameState.devSecret) return
@@ -218,139 +213,7 @@ export function MindLock({ onBack }: { onBack: () => void }) {
     setDevInput('')
   }
 
-  // Setup screen
-  if (gameState.currentTurn === 'setup' && !gameState.adiSecret && !gameState.devSecret) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4 py-8">
-        {/* Animated background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
-          <div className="absolute top-40 right-10 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
-          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000" />
-        </div>
 
-        <div className="relative z-10 w-full max-w-2xl">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Button
-                onClick={onBack}
-                variant="ghost"
-                size="icon"
-                className="absolute left-4 top-4 text-white hover:bg-white/10"
-              >
-                <ArrowLeft className="w-6 h-6" />
-              </Button>
-
-              <div className="flex items-center gap-2 justify-center">
-                <span className="text-6xl">🧠</span>
-              </div>
-            </div>
-            <h1 className="text-4xl font-bold text-white mb-2">MindLock</h1>
-            <p className="text-purple-200">Guess each other's secret number</p>
-          </div>
-
-          {/* Instructions */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">How to Play</h2>
-            <div className="space-y-2 text-purple-100 text-sm">
-              <p>✓ Both players secretly enter a number (0-99999)</p>
-              <p>✓ Take turns guessing each other's number</p>
-              <p>✓ Get hints to narrow down the range</p>
-              <p>✓ First to guess correctly wins</p>
-            </div>
-          </div>
-
-          {/* Setup forms */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Adi's setup */}
-            <div className="bg-gradient-to-br from-pink-500/20 to-rose-500/20 backdrop-blur-md rounded-2xl p-8 border border-pink-400/30">
-              <div className="flex items-center gap-2 mb-6">
-                <span className="text-3xl">💙</span>
-                <h3 className="text-2xl font-bold text-white">Adi</h3>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-pink-100 mb-2">
-                    Your secret number
-                  </label>
-                  <input
-                    ref={adiInputRef}
-                    type="password"
-                    value={adiInput}
-                    onChange={(e) => setAdiInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleAdiSecretSubmit()
-                    }}
-                    placeholder="••••••"
-                    className="w-full bg-white/10 border border-pink-400/50 rounded-lg px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20"
-                  />
-                  <p className="text-xs text-pink-200 mt-2">0-99999 (5 digits max)</p>
-                </div>
-
-                <Button
-                  onClick={handleAdiSecretSubmit}
-                  disabled={adiInput.length === 0 || gameState.adiSecret !== null}
-                  className="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold"
-                >
-                  {gameState.adiSecret ? '✓ Secret Set' : 'Set Your Secret'}
-                </Button>
-              </div>
-            </div>
-
-            {/* Dev's setup */}
-            <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 backdrop-blur-md rounded-2xl p-8 border border-blue-400/30">
-              <div className="flex items-center gap-2 mb-6">
-                <span className="text-3xl">💖</span>
-                <h3 className="text-2xl font-bold text-white">Dev</h3>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-blue-100 mb-2">
-                    Your secret number
-                  </label>
-                  <input
-                    ref={devInputRef}
-                    type="password"
-                    value={devInput}
-                    onChange={(e) => setDevInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleDevSecretSubmit()
-                    }}
-                    placeholder="••••••"
-                    className="w-full bg-white/10 border border-blue-400/50 rounded-lg px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                  />
-                  <p className="text-xs text-blue-200 mt-2">0-99999 (5 digits max)</p>
-                </div>
-
-                <Button
-                  onClick={handleDevSecretSubmit}
-                  disabled={devInput.length === 0 || gameState.devSecret !== null}
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold"
-                >
-                  {gameState.devSecret ? '✓ Secret Set' : 'Set Your Secret'}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Start button */}
-          {gameState.adiSecret && gameState.devSecret && (
-            <div className="mt-8 flex justify-center">
-              <Button
-                onClick={startCountdown}
-                className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold text-lg px-12 py-6 rounded-xl"
-              >
-                Let's Battle! 💥
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
 
   // Countdown screen
   if (gameState.currentTurn === 'countdown') {

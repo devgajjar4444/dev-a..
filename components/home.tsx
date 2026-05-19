@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Heart, Gamepad2 } from 'lucide-react'
 
-type GameType = 'matrix' | 'love-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator' | 'guess-the-date' | 'story-time' | 'heart-mail' | 'mind-lock'
+type GameType = 'matrix' | 'love-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator' | 'guess-the-date' | 'story-time' | 'heart-mail' | 'mind-lock' | 'royal-ink-reveal'
 
 interface HomeProps {
   onSelectGame: (game: GameType) => void
@@ -64,6 +64,12 @@ export function Home({ onSelectGame }: HomeProps) {
       title: 'MindLock',
       emoji: '🧠',
       description: 'Secret number battle',
+    },
+    {
+      id: 'royal-ink-reveal' as GameType,
+      title: 'Royal Ink Reveal',
+      emoji: '✨',
+      description: 'Cinematic love letter',
     },
   ]
 
