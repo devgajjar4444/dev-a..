@@ -10,8 +10,9 @@ import { DoYouLoveDev } from '@/components/games/do-you-love-dev'
 import { GuessTheDate } from '@/components/games/guess-the-date'
 import { StoryTime } from '@/components/games/story-time'
 import { HeartMail } from '@/components/games/heart-mail'
+import { MindLock } from '@/components/games/mind-lock'
 
-type GameType = 'home' | 'matrix' | 'love-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator' | 'guess-the-date' | 'story-time' | 'heart-mail'
+type GameType = 'home' | 'matrix' | 'love-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator' | 'guess-the-date' | 'story-time' | 'heart-mail' | 'mind-lock'
 
 export default function Page() {
   const [currentGame, setCurrentGame] = useState<GameType>('home')
@@ -34,6 +35,8 @@ export default function Page() {
         return <StoryTime onBack={() => setCurrentGame('home')} />
       case 'heart-mail':
         return <HeartMail onBack={() => setCurrentGame('home')} />
+      case 'mind-lock':
+        return <MindLock onBack={() => setCurrentGame('home')} />
       default:
         return <Home onSelectGame={setCurrentGame} />
     }
