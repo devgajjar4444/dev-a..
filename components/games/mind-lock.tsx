@@ -1,235 +1,493 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Volume2, VolumeX } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import { Confetti } from '@/components/animations/confetti'
 import { playSound } from '@/lib/sound'
 
+interface MindLockProps {
+  onBack: () => void
+}
+
+type GamePhase = 'intro' | 'number-entry-adi' | 'number-entry-dev' | 'countdown' | 'playing' | 'winner'
+type CurrentPlayer = 'adi' | 'dev'
+
+interface GuessHistory {
+  guess: number
+  feedback: string
+}
+
 interface GameState {
-  adiSecret: string
-  devSecret: string
-  adiLowest: number
-  adiHighest: number
-  devLowest: number
-  devHighest: number
-  adiLastGuess: number | null
-  devLastGuess: number | null
-  adiLastHint: string | null
-  devLastHint: string | null
-  adiGuessCount: number
-  devGuessCount: number
-  currentTurn: 'countdown' | 'adi' | 'dev'
-  countdownValue: number | null
+  adiSecretNumber: number | null
+  devSecretNumber: number | null
+  adiGuesses: GuessHistory[]
+  devGuesses: GuessHistory[]
+  adiLowestClose: number | null
+  adiHighestClose: number | null
+  devLowestClose: number | null
+  devHighestClose: number | null
+  currentPlayer: CurrentPlayer
   winner: 'adi' | 'dev' | null
-  adiGuessHistory: number[]
-  devGuessHistory: number[]
 }
 
-const generateSecret = (): string => {
-  return Math.floor(Math.random() * 100000).toString()
-}
-
-export function MindLock({ onBack }: { onBack: () => void }) {
+export function MindLock({ onBack }: MindLockProps) {
+  const [phase, setPhase] = useState<GamePhase>('intro')
   const [gameState, setGameState] = useState<GameState>({
-    adiSecret: '',
-    devSecret: '',
-    adiLowest: 0,
-    adiHighest: 99999,
-    devLowest: 0,
-    devHighest: 99999,
-    adiLastGuess: null,
-    devLastGuess: null,
-    adiLastHint: null,
-    devLastHint: null,
-    adiGuessCount: 0,
-    devGuessCount: 0,
-    currentTurn: 'countdown',
-    countdownValue: null,
+    adiSecretNumber: null,
+    devSecretNumber: null,
+    adiGuesses: [],
+    devGuesses: [],
+    adiLowestClose: null,
+    adiHighestClose: null,
+    devLowestClose: null,
+    devHighestClose: null,
+    currentPlayer: 'adi',
     winner: null,
-    adiGuessHistory: [],
-    devGuessHistory: [],
   })
+  const [inputValue, setInputValue] = useState('')
+  const [countdownNum, setCountdownNum] = useState(3)
+  const [errorMessage, setErrorMessage] = useState('')
 
-  const [soundEnabled, setSoundEnabled] = useState(true)
-  const adiInputRef = useRef<HTMLInputElement>(null)
-  const devInputRef = useRef<HTMLInputElement>(null)
-  const shakeRef = useRef<HTMLDivElement>(null)
-
+  // Countdown effect
   useEffect(() => {
-    // Auto-generate secrets and start countdown on mount
-    const newAdiSecret = generateSecret()
-    const newDevSecret = generateSecret()
-    
-    setGameState((prev) => ({
-      ...prev,
-      adiSecret: newAdiSecret,
-      devSecret: newDevSecret,
-      currentTurn: 'countdown',
-      countdownValue: 3,
-    }))
-    
-    playSound('start')
-    
-    let countdown = 3
-    const countdownInterval = setInterval(() => {
-      countdown--
-      if (countdown < 0) {
-        clearInterval(countdownInterval)
-        setGameState((prev) => ({
-          ...prev,
-          currentTurn: 'adi',
-          countdownValue: null,
-        }))
-        return
-      }
-      setGameState((prev) => ({
-        ...prev,
-        countdownValue: countdown,
-      }))
-    }, 1000)
-    
-    return () => clearInterval(countdownInterval)
-  }, [])
-
-  const playGameSound = (type: string) => {
-    if (!soundEnabled) return
-    if (type === 'guess') playSound('correct')
-    if (type === 'wrong') playSound('error')
-    if (type === 'victory') playSound('victory')
-  }
-
-  const calculateHint = (guess: number, secret: number): string => {
-    if (guess === secret) return 'CORRECT'
-    return guess < secret ? 'Higher ⬆️' : 'Lower ⬇️'
-  }
-
-  const checkVictory = (guess: number, secret: string): boolean => {
-    return guess === parseInt(secret)
-  }
-
-
-
-  const handleAdiGuess = (guess: number) => {
-    if (!gameState.devSecret) return
-
-    const secret = parseInt(gameState.devSecret)
-    const hint = calculateHint(guess, secret)
-    const isCorrect = checkVictory(guess, gameState.devSecret)
-
-    if (isCorrect) {
-      playGameSound('victory')
-      setGameState((prev) => ({
-        ...prev,
-        adiLastGuess: guess,
-        adiLastHint: 'CORRECT',
-        adiGuessCount: prev.adiGuessCount + 1,
-        adiGuessHistory: [...prev.adiGuessHistory, guess],
-        winner: 'adi',
-      }))
-      return
+    if (phase === 'countdown' && countdownNum > 0) {
+      const timer = setTimeout(() => {
+        setCountdownNum(countdownNum - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    } else if (phase === 'countdown' && countdownNum === 0) {
+      playSound('start')
+      setPhase('playing')
+      setCountdownNum(3)
     }
+  }, [phase, countdownNum])
 
-    playGameSound('guess')
-
-    // Update range
-    const newLowest = guess > gameState.adiLowest ? guess : gameState.adiLowest
-    const newHighest = guess < gameState.adiHighest ? guess : gameState.adiHighest
-
-    setGameState((prev) => ({
-      ...prev,
-      adiLastGuess: guess,
-      adiLastHint: hint,
-      adiLowest: newLowest,
-      adiHighest: newHighest,
-      adiGuessCount: prev.adiGuessCount + 1,
-      adiGuessHistory: [...prev.adiGuessHistory, guess],
-      currentTurn: 'dev',
-    }))
-
-    adiInputRef.current?.focus()
-  }
-
-  const handleDevGuess = (guess: number) => {
-    if (!gameState.adiSecret) return
-
-    const secret = parseInt(gameState.adiSecret)
-    const hint = calculateHint(guess, secret)
-    const isCorrect = checkVictory(guess, gameState.adiSecret)
-
-    if (isCorrect) {
-      playGameSound('victory')
-      setGameState((prev) => ({
-        ...prev,
-        devLastGuess: guess,
-        devLastHint: 'CORRECT',
-        devGuessCount: prev.devGuessCount + 1,
-        devGuessHistory: [...prev.devGuessHistory, guess],
-        winner: 'dev',
-      }))
-      return
-    }
-
-    playGameSound('guess')
-
-    // Update range
-    const newLowest = guess > gameState.devLowest ? guess : gameState.devLowest
-    const newHighest = guess < gameState.devHighest ? guess : gameState.devHighest
-
-    setGameState((prev) => ({
-      ...prev,
-      devLastGuess: guess,
-      devLastHint: hint,
-      devLowest: newLowest,
-      devHighest: newHighest,
-      devGuessCount: prev.devGuessCount + 1,
-      devGuessHistory: [...prev.devGuessHistory, guess],
-      currentTurn: 'adi',
-    }))
-
-    devInputRef.current?.focus()
-  }
-
+  // Reset game state properly when unmounting or returning to home
   const resetGame = () => {
+    setPhase('intro')
     setGameState({
-      adiSecret: null,
-      devSecret: null,
-      adiLowest: 0,
-      adiHighest: 99999,
-      devLowest: 0,
-      devHighest: 99999,
-      adiLastGuess: null,
-      devLastGuess: null,
-      adiLastHint: null,
-      devLastHint: null,
-      adiGuessCount: 0,
-      devGuessCount: 0,
-      currentTurn: 'setup',
-      countdownValue: null,
+      adiSecretNumber: null,
+      devSecretNumber: null,
+      adiGuesses: [],
+      devGuesses: [],
+      adiLowestClose: null,
+      adiHighestClose: null,
+      devLowestClose: null,
+      devHighestClose: null,
+      currentPlayer: 'adi',
       winner: null,
-      adiGuessHistory: [],
-      devGuessHistory: [],
     })
-    setAdiInput('')
-    setDevInput('')
+    setInputValue('')
+    setCountdownNum(3)
+    setErrorMessage('')
   }
 
+  const handleNumberEntry = (value: string) => {
+    const num = parseInt(value)
+    
+    if (value === '') {
+      setInputValue('')
+      setErrorMessage('')
+      return
+    }
 
+    if (isNaN(num)) {
+      setErrorMessage('Please enter a valid number')
+      return
+    }
 
-  // Countdown screen
-  if (gameState.currentTurn === 'countdown') {
+    if (num < 1 || num > 1000) {
+      setErrorMessage('Number must be between 1 and 1000')
+      return
+    }
+
+    setInputValue(value)
+    setErrorMessage('')
+  }
+
+  const handleNumberSubmit = () => {
+    const num = parseInt(inputValue)
+
+    if (isNaN(num) || num < 1 || num > 1000) {
+      setErrorMessage('Please enter a valid number between 1 and 1000')
+      return
+    }
+
+    playSound('start')
+
+    if (phase === 'number-entry-adi') {
+      setGameState({
+        ...gameState,
+        adiSecretNumber: num,
+      })
+      setInputValue('')
+      setPhase('number-entry-dev')
+      setErrorMessage('')
+    } else if (phase === 'number-entry-dev') {
+      setGameState({
+        ...gameState,
+        devSecretNumber: num,
+      })
+      setInputValue('')
+      setPhase('countdown')
+      setErrorMessage('')
+    }
+  }
+
+  const getRange = (player: CurrentPlayer) => {
+    if (player === 'adi') {
+      return {
+        lowest: gameState.adiLowestClose,
+        highest: gameState.adiHighestClose,
+      }
+    }
+    return {
+      lowest: gameState.devLowestClose,
+      highest: gameState.devHighestClose,
+    }
+  }
+
+  const getSecretNumber = (player: CurrentPlayer) => {
+    return player === 'adi' ? gameState.devSecretNumber : gameState.adiSecretNumber
+  }
+
+  const handleGuess = (guess: number) => {
+    const secretNum = getSecretNumber(gameState.currentPlayer)
+
+    if (!secretNum) return
+
+    let feedback = ''
+    const isCorrect = guess === secretNum
+
+    if (isCorrect) {
+      feedback = gameState.currentPlayer === 'adi' ? '💖 Found Dev\'s Heart! 💖' : '✨ Read Adi\'s Mind! ✨'
+      playSound('win')
+    } else if (guess < secretNum) {
+      feedback = 'Try Higher 💫'
+      playSound('click')
+    } else {
+      feedback = 'Too High 🌙'
+      playSound('pop')
+    }
+
+    // Update game state with new guess
+    const newGameState = { ...gameState }
+
+    if (gameState.currentPlayer === 'adi') {
+      newGameState.adiGuesses = [...gameState.adiGuesses, { guess, feedback }]
+
+      // Update closest guesses for Adi
+      if (guess < secretNum) {
+        if (newGameState.adiLowestClose === null || guess > newGameState.adiLowestClose) {
+          newGameState.adiLowestClose = guess
+        }
+      } else if (guess > secretNum) {
+        if (newGameState.adiHighestClose === null || guess < newGameState.adiHighestClose) {
+          newGameState.adiHighestClose = guess
+        }
+      }
+    } else {
+      newGameState.devGuesses = [...gameState.devGuesses, { guess, feedback }]
+
+      // Update closest guesses for Dev
+      if (guess < secretNum) {
+        if (newGameState.devLowestClose === null || guess > newGameState.devLowestClose) {
+          newGameState.devLowestClose = guess
+        }
+      } else if (guess > secretNum) {
+        if (newGameState.devHighestClose === null || guess < newGameState.devHighestClose) {
+          newGameState.devHighestClose = guess
+        }
+      }
+    }
+
+    if (isCorrect) {
+      newGameState.winner = gameState.currentPlayer
+      setPhase('winner')
+    } else {
+      // Switch to next player
+      newGameState.currentPlayer = gameState.currentPlayer === 'adi' ? 'dev' : 'adi'
+    }
+
+    setGameState(newGameState)
+    setInputValue('')
+    setErrorMessage('')
+  }
+
+  const handleGuessInput = (value: string) => {
+    const num = parseInt(value)
+
+    if (value === '') {
+      setInputValue('')
+      setErrorMessage('')
+      return
+    }
+
+    if (isNaN(num)) {
+      setErrorMessage('Please enter a valid number')
+      return
+    }
+
+    if (num < 1 || num > 1000) {
+      setErrorMessage('Number must be between 1 and 1000')
+      return
+    }
+
+    setInputValue(value)
+    setErrorMessage('')
+  }
+
+  const getCurrentGuesses = () => {
+    return gameState.currentPlayer === 'adi' ? gameState.adiGuesses : gameState.devGuesses
+  }
+
+  const getRange2 = () => {
+    const range = getRange(gameState.currentPlayer)
+    const parts = []
+
+    if (range.lowest !== null && range.highest !== null) {
+      parts.push(`Number is between ${range.lowest} and ${range.highest}`)
+    } else if (range.lowest !== null) {
+      parts.push(`Number is higher than ${range.lowest}`)
+    } else if (range.highest !== null) {
+      parts.push(`Number is lower than ${range.highest}`)
+    }
+
+    return parts
+  }
+
+  const handleBack = () => {
+    resetGame()
+    onBack()
+  }
+
+  // Intro Screen
+  if (phase === 'intro') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4">
-        <div className="text-center">
-          {gameState.countdownValue !== null && gameState.countdownValue > 0 ? (
-            <div className="animate-pulse">
-              <p className="text-9xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600 mb-4">
-                {gameState.countdownValue}
-              </p>
+      <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8 bg-gradient-to-br from-purple-900 via-pink-900 to-purple-900">
+        <button
+          onClick={handleBack}
+          className="absolute top-8 left-8 flex items-center gap-2 text-white hover:text-pink-300 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Back to Arcade
+        </button>
+
+        <div className="text-center max-w-md">
+          <div className="text-8xl mb-6 animate-pulse">🔐</div>
+          <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-pink-300 to-purple-300 bg-clip-text text-transparent">
+            Mind Lock
+          </h1>
+          <p className="text-xl text-pink-200 mb-4">Guess your partner's hidden heart</p>
+          <p className="text-sm text-purple-200 mb-12">
+            Enter a secret number. Then guess Dev's number. The closest one wins.
+          </p>
+
+          <Button
+            onClick={() => setPhase('number-entry-adi')}
+            className="rounded-full px-12 py-6 text-lg bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white border-0"
+          >
+            Begin 💖
+          </Button>
+
+          <div className="mt-12 text-xs text-purple-300">
+            <p>Choose a number between 1 - 1000</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Number Entry - Adi
+  if (phase === 'number-entry-adi') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8 bg-gradient-to-br from-blue-900 via-purple-900 to-blue-900">
+        <button
+          onClick={handleBack}
+          className="absolute top-8 left-8 flex items-center gap-2 text-white hover:text-blue-300 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Back
+        </button>
+
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-6">💙</div>
+          <h2 className="text-4xl font-bold text-white mb-2">Adi</h2>
+          <p className="text-lg text-blue-200 mb-8">Enter your secret number for Dev to guess</p>
+
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 mb-8">
+            <div className="text-4xl font-bold text-blue-300 mb-6 tracking-wider">
+              {inputValue || '○ ○ ○'}
             </div>
+            <input
+              type="number"
+              min="1"
+              max="1000"
+              value={inputValue}
+              onChange={(e) => handleNumberEntry(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleNumberSubmit()}
+              className="w-full bg-white/10 border border-white/30 rounded-xl px-4 py-3 text-white text-center text-xl focus:outline-none focus:border-blue-400 placeholder-white/50"
+              placeholder="Enter number (1-1000)"
+              autoFocus
+            />
+            {errorMessage && <p className="text-red-300 text-sm mt-3">{errorMessage}</p>}
+          </div>
+
+          <Button
+            onClick={handleNumberSubmit}
+            disabled={!inputValue}
+            className="w-full rounded-xl py-3 bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50"
+          >
+            Next →
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Number Entry - Dev
+  if (phase === 'number-entry-dev') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8 bg-gradient-to-br from-pink-900 via-purple-900 to-pink-900">
+        <button
+          onClick={handleBack}
+          className="absolute top-8 left-8 flex items-center gap-2 text-white hover:text-pink-300 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Back
+        </button>
+
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-6">💖</div>
+          <h2 className="text-4xl font-bold text-white mb-2">Dev</h2>
+          <p className="text-lg text-pink-200 mb-8">Enter your secret number for Adi to guess</p>
+
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 mb-8">
+            <div className="text-4xl font-bold text-pink-300 mb-6 tracking-wider">
+              {inputValue || '○ ○ ○'}
+            </div>
+            <input
+              type="number"
+              min="1"
+              max="1000"
+              value={inputValue}
+              onChange={(e) => handleNumberEntry(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleNumberSubmit()}
+              className="w-full bg-white/10 border border-white/30 rounded-xl px-4 py-3 text-white text-center text-xl focus:outline-none focus:border-pink-400 placeholder-white/50"
+              placeholder="Enter number (1-1000)"
+              autoFocus
+            />
+            {errorMessage && <p className="text-red-300 text-sm mt-3">{errorMessage}</p>}
+          </div>
+
+          <Button
+            onClick={handleNumberSubmit}
+            disabled={!inputValue}
+            className="w-full rounded-xl py-3 bg-pink-500 hover:bg-pink-600 text-white disabled:opacity-50"
+          >
+            Next →
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Countdown Screen
+  if (phase === 'countdown') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8 bg-gradient-to-br from-purple-900 via-pink-900 to-purple-900">
+        <div className="text-center">
+          {countdownNum > 0 ? (
+            <div className="text-9xl font-bold text-white animate-bounce mb-8">{countdownNum}</div>
           ) : (
-            <div>
-              <p className="text-6xl font-bold text-white mb-4">🔥 START 🔥</p>
-              <p className="text-2xl text-purple-300">Battle Begins!</p>
+            <div className="text-8xl mb-6 animate-pulse">💖</div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Playing Screen
+  if (phase === 'playing') {
+    const currentGuesses = getCurrentGuesses()
+    const range = getRange(gameState.currentPlayer)
+    const rangeText = getRange2()
+
+    return (
+      <div
+        className={`flex flex-col items-center justify-center min-h-screen px-4 py-8 ${
+          gameState.currentPlayer === 'adi'
+            ? 'bg-gradient-to-br from-blue-900 via-purple-900 to-blue-900'
+            : 'bg-gradient-to-br from-pink-900 via-purple-900 to-pink-900'
+        }`}
+      >
+        <button
+          onClick={handleBack}
+          className="absolute top-8 left-8 flex items-center gap-2 text-white hover:text-opacity-70 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Back
+        </button>
+
+        <div className="max-w-2xl w-full">
+          {/* Player Header */}
+          <div className="text-center mb-8">
+            <div className="text-6xl mb-2">{gameState.currentPlayer === 'adi' ? '💙' : '💖'}</div>
+            <h2 className="text-4xl font-bold text-white mb-2">
+              {gameState.currentPlayer === 'adi' ? 'Adi' : 'Dev'}'s Turn
+            </h2>
+            <p className={`text-lg ${gameState.currentPlayer === 'adi' ? 'text-blue-200' : 'text-pink-200'}`}>
+              Guess {gameState.currentPlayer === 'adi' ? 'Dev' : 'Adi'}'s number
+            </p>
+          </div>
+
+          {/* Range Info */}
+          {rangeText.length > 0 && (
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 mb-8 text-white text-center">
+              {rangeText.map((text, idx) => (
+                <p key={idx} className="text-lg font-semibold">
+                  {text}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {/* Guess Input */}
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 mb-8">
+            <input
+              type="number"
+              min="1"
+              max="1000"
+              value={inputValue}
+              onChange={(e) => handleGuessInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && inputValue && handleGuess(parseInt(inputValue))}
+              className="w-full bg-white/10 border border-white/30 rounded-xl px-4 py-3 text-white text-center text-2xl focus:outline-none focus:border-white/50 placeholder-white/50 mb-4"
+              placeholder="Enter your guess"
+              autoFocus
+            />
+            {errorMessage && <p className="text-red-300 text-sm text-center">{errorMessage}</p>}
+            <Button
+              onClick={() => inputValue && handleGuess(parseInt(inputValue))}
+              disabled={!inputValue}
+              className="w-full rounded-xl py-3 bg-white/20 hover:bg-white/30 text-white disabled:opacity-50"
+            >
+              Guess
+            </Button>
+          </div>
+
+          {/* Previous Guesses */}
+          {currentGuesses.length > 0 && (
+            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+              <h3 className="text-white font-semibold mb-4 text-center">Previous Guesses</h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {currentGuesses.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-white/80 text-sm">
+                    <span className="font-mono font-bold text-white">{item.guess}</span>
+                    <span>{item.feedback}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -237,327 +495,55 @@ export function MindLock({ onBack }: { onBack: () => void }) {
     )
   }
 
-  // Game screen
-  if (gameState.currentTurn === 'adi' || gameState.currentTurn === 'dev') {
-    const isAdiTurn = gameState.currentTurn === 'adi'
-    const currentPlayer = isAdiTurn ? 'Adi' : 'Dev'
-    const currentColor = isAdiTurn ? 'pink' : 'blue'
-    const playerEmoji = isAdiTurn ? '💙' : '💖'
-    const opponentEmoji = isAdiTurn ? '💖' : '💙'
-
-    const guessHistory = isAdiTurn ? gameState.adiGuessHistory : gameState.devGuessHistory
-    const lowest = isAdiTurn ? gameState.adiLowest : gameState.devLowest
-    const highest = isAdiTurn ? gameState.adiHighest : gameState.devHighest
-    const lastHint = isAdiTurn ? gameState.adiLastHint : gameState.devLastHint
-    const guessCount = isAdiTurn ? gameState.adiGuessCount : gameState.devGuessCount
-
-    const handleGuessSubmit = (guess: number) => {
-      if (isAdiTurn) {
-        handleAdiGuess(guess)
-      } else {
-        handleDevGuess(guess)
-      }
-    }
+  // Winner Screen
+  if (phase === 'winner') {
+    const guesses = gameState.winner === 'adi' ? gameState.adiGuesses.length : gameState.devGuesses.length
+    const winnerName = gameState.winner === 'adi' ? 'Adi' : 'Dev'
+    const loserName = gameState.winner === 'adi' ? 'Dev' : 'Adi'
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4 py-8">
-        {/* Animated background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
-          <div className="absolute top-40 right-10 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8 bg-gradient-to-br from-purple-900 via-pink-900 to-purple-900">
+        <Confetti count={50} duration={3} delay={0} shape="heart" />
 
-        <div className="relative z-10 w-full max-w-4xl">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <Button
-              onClick={onBack}
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/10"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </Button>
+        <div className="text-center max-w-md relative z-10">
+          <div className="text-9xl mb-6 animate-bounce">🔐</div>
+          <div className="text-8xl animate-pulse mb-6">💖</div>
 
-            <div className="text-center flex-1">
-              <p className="text-purple-300 text-sm mb-1">Turn</p>
-              <p className="text-3xl font-bold text-white">
-                {playerEmoji} {currentPlayer}'s Turn
-              </p>
-            </div>
+          <h2 className="text-5xl font-bold text-white mb-4">
+            {gameState.winner === 'adi' ? '💙' : '💖'} {winnerName} Wins!
+          </h2>
 
-            <Button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/10"
-            >
-              {soundEnabled ? (
-                <Volume2 className="w-6 h-6" />
-              ) : (
-                <VolumeX className="w-6 h-6" />
-              )}
-            </Button>
-          </div>
-
-          {/* Main game area */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Current player - guessing */}
-            <div
-              ref={shakeRef}
-              className={`bg-gradient-to-br from-${currentColor}-500/20 to-${currentColor}-600/20 backdrop-blur-md rounded-2xl p-8 border border-${currentColor}-400/30`}
-            >
-              <div className="flex items-center gap-2 mb-6">
-                <span className="text-3xl">{playerEmoji}</span>
-                <h3 className="text-2xl font-bold text-white">Guessing Dev's Number</h3>
-              </div>
-
-              <div className="space-y-6">
-                {/* Range display */}
-                <div className="bg-white/10 rounded-xl p-4 border border-white/20">
-                  <p className="text-xs text-gray-300 mb-2">Possible Range</p>
-                  <p className="text-3xl font-bold text-white">
-                    {lowest.toLocaleString()} ↔ {highest.toLocaleString()}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-2">
-                    {highest - lowest + 1} possibilities left
-                  </p>
-                </div>
-
-                {/* Last guess and hint */}
-                {gameState.adiLastGuess !== null && isAdiTurn && (
-                  <div className="bg-white/10 rounded-xl p-4 border border-white/20">
-                    <p className="text-xs text-gray-300 mb-2">Last Guess</p>
-                    <p className="text-2xl font-bold text-white mb-2">
-                      {gameState.adiLastGuess}
-                    </p>
-                    <p className="text-lg font-bold text-purple-300">{lastHint}</p>
-                  </div>
-                )}
-                {gameState.devLastGuess !== null && !isAdiTurn && (
-                  <div className="bg-white/10 rounded-xl p-4 border border-white/20">
-                    <p className="text-xs text-gray-300 mb-2">Last Guess</p>
-                    <p className="text-2xl font-bold text-white mb-2">
-                      {gameState.devLastGuess}
-                    </p>
-                    <p className="text-lg font-bold text-purple-300">{lastHint}</p>
-                  </div>
-                )}
-
-                {/* Guess input */}
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Make your guess
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      id="guess-input"
-                      type="number"
-                      placeholder="Enter your guess"
-                      className="flex-1 bg-white/10 border border-white/30 rounded-lg px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:border-white/50 focus:ring-2 focus:ring-white/20"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const input = e.currentTarget
-                          const guess = parseInt(input.value)
-                          if (!isNaN(guess)) {
-                            handleGuessSubmit(guess)
-                            input.value = ''
-                          }
-                        }
-                      }}
-                    />
-                    <Button
-                      onClick={() => {
-                        const input = document.getElementById(
-                          'guess-input'
-                        ) as HTMLInputElement
-                        const guess = parseInt(input.value)
-                        if (!isNaN(guess)) {
-                          handleGuessSubmit(guess)
-                          input.value = ''
-                        }
-                      }}
-                      className="bg-white/20 hover:bg-white/30 text-white font-bold px-6"
-                    >
-                      Guess
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Guess counter */}
-                <div className="bg-white/10 rounded-xl p-4 border border-white/20 text-center">
-                  <p className="text-xs text-gray-300 mb-1">Guesses</p>
-                  <p className="text-3xl font-bold text-white">{guessCount}</p>
-                </div>
-
-                {/* Recent guesses */}
-                {guessHistory.length > 0 && (
-                  <div className="bg-white/10 rounded-xl p-4 border border-white/20">
-                    <p className="text-xs text-gray-300 mb-3">Recent Guesses</p>
-                    <div className="flex flex-wrap gap-2">
-                      {guessHistory.slice(-10).map((guess, i) => (
-                        <span
-                          key={i}
-                          className="bg-white/20 text-white text-sm font-medium px-3 py-1 rounded-lg"
-                        >
-                          {guess}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Opponent's stats */}
-            <div className={`bg-gradient-to-br from-${currentColor === 'pink' ? 'blue' : 'pink'}-500/20 to-${currentColor === 'pink' ? 'blue' : 'pink'}-600/20 backdrop-blur-md rounded-2xl p-8 border border-${currentColor === 'pink' ? 'blue' : 'pink'}-400/30`}>
-              <div className="flex items-center gap-2 mb-6">
-                <span className="text-3xl">{opponentEmoji}</span>
-                <h3 className="text-2xl font-bold text-white">
-                  {isAdiTurn ? 'Dev' : 'Adi'}'s Status
-                </h3>
-              </div>
-
-              <div className="space-y-4">
-                {/* Opponent's range */}
-                <div className="bg-white/10 rounded-xl p-4 border border-white/20">
-                  <p className="text-xs text-gray-300 mb-2">Their Possible Range</p>
-                  <p className="text-2xl font-bold text-white">
-                    {isAdiTurn
-                      ? `${gameState.devLowest.toLocaleString()} ↔ ${gameState.devHighest.toLocaleString()}`
-                      : `${gameState.adiLowest.toLocaleString()} ↔ ${gameState.adiHighest.toLocaleString()}`}
-                  </p>
-                </div>
-
-                {/* Opponent's last guess */}
-                {isAdiTurn && gameState.devLastGuess !== null && (
-                  <div className="bg-white/10 rounded-xl p-4 border border-white/20">
-                    <p className="text-xs text-gray-300 mb-2">Their Last Guess</p>
-                    <p className="text-2xl font-bold text-white mb-1">
-                      {gameState.devLastGuess}
-                    </p>
-                    <p className="text-sm text-purple-300">{gameState.devLastHint}</p>
-                  </div>
-                )}
-                {!isAdiTurn && gameState.adiLastGuess !== null && (
-                  <div className="bg-white/10 rounded-xl p-4 border border-white/20">
-                    <p className="text-xs text-gray-300 mb-2">Their Last Guess</p>
-                    <p className="text-2xl font-bold text-white mb-1">
-                      {gameState.adiLastGuess}
-                    </p>
-                    <p className="text-sm text-purple-300">{gameState.adiLastHint}</p>
-                  </div>
-                )}
-
-                {/* Opponent's guess count */}
-                <div className="bg-white/10 rounded-xl p-4 border border-white/20 text-center">
-                  <p className="text-xs text-gray-300 mb-1">Their Guesses</p>
-                  <p className="text-3xl font-bold text-white">
-                    {isAdiTurn ? gameState.devGuessCount : gameState.adiGuessCount}
-                  </p>
-                </div>
-
-                {/* Opponent's recent guesses */}
-                {(isAdiTurn ? gameState.devGuessHistory : gameState.adiGuessHistory).length >
-                  0 && (
-                  <div className="bg-white/10 rounded-xl p-4 border border-white/20">
-                    <p className="text-xs text-gray-300 mb-3">Their Recent Guesses</p>
-                    <div className="flex flex-wrap gap-2">
-                      {(isAdiTurn
-                        ? gameState.devGuessHistory
-                        : gameState.adiGuessHistory
-                      )
-                        .slice(-10)
-                        .map((guess, i) => (
-                          <span
-                            key={i}
-                            className="bg-white/20 text-white text-sm font-medium px-3 py-1 rounded-lg"
-                          >
-                            {guess}
-                          </span>
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Victory screen
-  if (gameState.winner) {
-    const isAdiWinner = gameState.winner === 'adi'
-    const winnerName = isAdiWinner ? 'Adi' : 'Dev'
-    const winnerEmoji = isAdiWinner ? '💙' : '💖'
-    const loserGuesses = isAdiWinner ? gameState.devGuessCount : gameState.adiGuessCount
-    const winnerGuesses = isAdiWinner ? gameState.adiGuessCount : gameState.devGuessCount
-
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4">
-        {/* Confetti background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center">
-            {[...Array(30)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-2 h-2 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full animate-pulse"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animation: `fall ${2 + Math.random() * 2}s linear infinite`,
-                  animationDelay: `${Math.random() * 2}s`,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="relative z-10 text-center max-w-2xl">
-          <div className="text-9xl mb-4 animate-bounce">{winnerEmoji}</div>
-          <h1 className="text-5xl font-bold text-white mb-2">{winnerName} Wins!</h1>
-          <p className="text-2xl text-purple-300 mb-8">
-            Guessed in {winnerGuesses} attempts
+          <p className="text-xl text-purple-200 mb-2">
+            {gameState.winner === 'adi'
+              ? '💙 Read Adi\'s Mind 💙'
+              : '💖 Found Dev\'s Heart 💖'}
           </p>
 
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 mb-8">
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              <div>
-                <p className="text-gray-300 text-sm mb-2">Winner</p>
-                <p className="text-4xl font-bold text-white">
-                  {winnerEmoji} {winnerGuesses}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-300 text-sm mb-2">Opponent</p>
-                <p className="text-4xl font-bold text-white">
-                  {isAdiWinner ? '💖' : '💙'} {loserGuesses}
-                </p>
-              </div>
-            </div>
+          <p className="text-lg text-white/80 mb-8">
+            Guessed in {guesses} attempt{guesses !== 1 ? 's' : ''}
+          </p>
 
-            <div className="border-t border-white/20 pt-6">
-              <p className="text-gray-300 mb-4">
-                {winnerName} successfully cracked the code!
-              </p>
-            </div>
+          <div className="mb-8 space-y-3">
+            <Button
+              onClick={() => {
+                resetGame()
+                setPhase('number-entry-adi')
+              }}
+              className="w-full rounded-full py-3 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white"
+            >
+              Play Again 💖
+            </Button>
+            <Button
+              onClick={handleBack}
+              className="w-full rounded-full py-3 bg-white/20 hover:bg-white/30 text-white"
+            >
+              Back to Arcade
+            </Button>
           </div>
 
-          <Button
-            onClick={resetGame}
-            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold text-lg px-12 py-6 rounded-xl mr-4"
-          >
-            Play Again
-          </Button>
-          <Button
-            onClick={onBack}
-            variant="outline"
-            className="bg-white/10 text-white font-bold text-lg px-12 py-6 rounded-xl border-white/30 hover:bg-white/20"
-          >
-            Back to Arcade
-          </Button>
+          <p className="text-xs text-purple-300 italic">
+            I made this game for you, Adi 💕 — Dev
+          </p>
         </div>
       </div>
     )

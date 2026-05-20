@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Home } from '@/components/home'
 import { MatrixForAdi } from '@/components/games/matrix-for-adi'
 import { LoveLock } from '@/components/games/love-lock'
+import { MindLock } from '@/components/games/mind-lock'
 import { CupidShot } from '@/components/games/cupid-shot'
 import { LoveRoulette } from '@/components/games/love-roulette'
 import { DoYouLoveDev } from '@/components/games/do-you-love-dev'
@@ -13,7 +14,7 @@ import { HeartMail } from '@/components/games/heart-mail'
 import { MindLock } from '@/components/games/mind-lock'
 import { RoyalInkReveal } from '@/components/games/royal-ink-reveal'
 
-type GameType = 'home' | 'matrix' | 'love-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator' | 'guess-the-date' | 'story-time' | 'heart-mail' | 'mind-lock' | 'royal-ink-reveal'
+type GameType = 'home' | 'matrix' | 'love-lock' | 'mind-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator'
 
 export default function Page() {
   const [currentGame, setCurrentGame] = useState<GameType>('home')
@@ -24,6 +25,8 @@ export default function Page() {
         return <MatrixForAdi onBack={() => setCurrentGame('home')} />
       case 'love-lock':
         return <LoveLock onBack={() => setCurrentGame('home')} />
+      case 'mind-lock':
+        return <MindLock onBack={() => setCurrentGame('home')} />
       case 'cupid-shot':
         return <CupidShot onBack={() => setCurrentGame('home')} />
       case 'quick-fingers':
