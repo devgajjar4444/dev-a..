@@ -37,15 +37,45 @@ export function Home({ onSelectGame }: HomeProps) {
     },
     {
       id: 'quick-fingers' as GameType,
-      title: 'Quick Fingers ⚡',
-      emoji: '⚡',
-      description: 'Tap the tiles fast',
+      title: 'Love Roulette 🎡',
+      emoji: '🎡',
+      description: 'Guess love trivia',
     },
     {
       id: 'love-calculator' as GameType,
       title: 'Do You Love Dev?',
       emoji: '💕',
       description: 'Love calculator',
+    },
+    {
+      id: 'guess-the-date' as GameType,
+      title: 'Guess the Date',
+      emoji: '💌',
+      description: 'Reveal love memories',
+    },
+    {
+      id: 'story-time' as GameType,
+      title: 'Story Time',
+      emoji: '📖',
+      description: 'Romantic bedtime stories',
+    },
+    {
+      id: 'heart-mail' as GameType,
+      title: 'Heart Mail',
+      emoji: '📮',
+      description: 'Floating love letters',
+    },
+    {
+      id: 'mind-lock' as GameType,
+      title: 'MindLock',
+      emoji: '🧠',
+      description: 'Secret number battle',
+    },
+    {
+      id: 'royal-ink-reveal' as GameType,
+      title: 'Royal Ink Reveal',
+      emoji: '✨',
+      description: 'Cinematic love letter',
     },
   ]
 

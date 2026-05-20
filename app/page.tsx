@@ -6,8 +6,13 @@ import { MatrixForAdi } from '@/components/games/matrix-for-adi'
 import { LoveLock } from '@/components/games/love-lock'
 import { MindLock } from '@/components/games/mind-lock'
 import { CupidShot } from '@/components/games/cupid-shot'
-import { QuickFingers } from '@/components/games/quick-fingers'
+import { LoveRoulette } from '@/components/games/love-roulette'
 import { DoYouLoveDev } from '@/components/games/do-you-love-dev'
+import { GuessTheDate } from '@/components/games/guess-the-date'
+import { StoryTime } from '@/components/games/story-time'
+import { HeartMail } from '@/components/games/heart-mail'
+import { MindLock } from '@/components/games/mind-lock'
+import { RoyalInkReveal } from '@/components/games/royal-ink-reveal'
 
 type GameType = 'home' | 'matrix' | 'love-lock' | 'mind-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator'
 
@@ -25,9 +30,19 @@ export default function Page() {
       case 'cupid-shot':
         return <CupidShot onBack={() => setCurrentGame('home')} />
       case 'quick-fingers':
-        return <QuickFingers onBack={() => setCurrentGame('home')} />
+        return <LoveRoulette onBack={() => setCurrentGame('home')} />
       case 'love-calculator':
         return <DoYouLoveDev onBack={() => setCurrentGame('home')} />
+      case 'guess-the-date':
+        return <GuessTheDate onBack={() => setCurrentGame('home')} />
+      case 'story-time':
+        return <StoryTime onBack={() => setCurrentGame('home')} />
+      case 'heart-mail':
+        return <HeartMail onBack={() => setCurrentGame('home')} />
+      case 'mind-lock':
+        return <MindLock onBack={() => setCurrentGame('home')} />
+      case 'royal-ink-reveal':
+        return <RoyalInkReveal onBack={() => setCurrentGame('home')} />
       default:
         return <Home onSelectGame={setCurrentGame} />
     }
