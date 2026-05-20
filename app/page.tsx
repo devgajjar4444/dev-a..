@@ -4,11 +4,12 @@ import { useState } from 'react'
 import { Home } from '@/components/home'
 import { MatrixForAdi } from '@/components/games/matrix-for-adi'
 import { LoveLock } from '@/components/games/love-lock'
+import { MindLock } from '@/components/games/mind-lock'
 import { CupidShot } from '@/components/games/cupid-shot'
 import { QuickFingers } from '@/components/games/quick-fingers'
 import { DoYouLoveDev } from '@/components/games/do-you-love-dev'
 
-type GameType = 'home' | 'matrix' | 'love-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator'
+type GameType = 'home' | 'matrix' | 'love-lock' | 'mind-lock' | 'cupid-shot' | 'quick-fingers' | 'love-calculator'
 
 export default function Page() {
   const [currentGame, setCurrentGame] = useState<GameType>('home')
@@ -19,6 +20,8 @@ export default function Page() {
         return <MatrixForAdi onBack={() => setCurrentGame('home')} />
       case 'love-lock':
         return <LoveLock onBack={() => setCurrentGame('home')} />
+      case 'mind-lock':
+        return <MindLock onBack={() => setCurrentGame('home')} />
       case 'cupid-shot':
         return <CupidShot onBack={() => setCurrentGame('home')} />
       case 'quick-fingers':
